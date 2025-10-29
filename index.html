@@ -1,17 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My DHT22 Data</title>
+  <meta charset="UTF-8">
+  <title>ThingSpeak DHT22 Data</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Temperature (°C)</h1>
-  <iframe width="450" height="260" 
-  src="https://thingspeak.com/channels/3138187/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line">
-  </iframe>
+  <h1>DHT22 Sensor Data</h1>
 
-  <h1>Humidity (%)</h1>
-  <iframe width="450" height="260" 
-  src="https://thingspeak.com/channels/3138187/charts/2?bgcolor=%23ffffff&color=%2300aaff&dynamic=true&results=60&type=line">
-  </iframe>
+  <canvas id="tempChart" width="600" height="300"></canvas>
+  <canvas id="humChart" width="600" height="300"></canvas>
+
+  <script>
+    const channelID = "3138187";              // Your ThingSpeak channel ID
+    const readAPIKey = "7BMMGR80OZBO8PIU";   // ThingSpeak Read API Key
+
+    let tempChart, humChart;
+
+    async function fetchData() {
+      const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readAPIKey}&results=20`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const timestamps = data.feeds.map(feed => feed.created_at.substring(11,19)); // hh:mm:ss
+      const tempData = data.feeds.map(feed => parseFloat(feed.field1));
+      const humData = data.feeds.map(feed => parseFloat(feed.field2));
+
+      // Update or create temperature chart
+      if (!tempChart) {
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        tempChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: timestamps,
+            datasets: [{
+              label: 'Temperature (°C)',
+              data: tempData,
+              borderColor: 'red',
+              fill: false
+            }]
+          },
+          options: { responsive: true }
+        });
+      } else {
+        tempChart.data.labels = timestamps;
+        tempChart.data.datasets[0].data = tempData;
+        tempChart.update();
+      }
+
+      // Update or create humidity chart
+      if (!humChart) {
+        const ctx2 = document.getElementById('humChart').getContext('2d');
+        humChart = new Chart(ctx2, {
+          type: 'line',
+          data: {
+            labels: timestamps,
+            datasets: [{
+              label: 'Humidity (%)',
+              data: humData,
+              borderColor: 'blue',
+              fill: false
+            }]
+          },
+          options: { responsive: true }
+        });
+      } else {
+        humChart.data.labels = timestamps;
+        humChart.data.datasets[0].data = humData;
+        humChart.update();
+      }
+    }
+
+    // Fetch data every 15 seconds
+    fetchData();
+    setInterval(fetchData, 15000);
+  </script>
 </body>
 </html>
