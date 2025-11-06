@@ -8,21 +8,21 @@
 <script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f8f9fa; text-align:center; }
-  .tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
-  .tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px;}
-  .tabs button.active { background:#007bff; color:white; }
-  .tab-content { display:none; max-width:900px; margin:auto; text-align:left; }
-  .tab-content.active { display:block; }
-  .card { background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-  #sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
-  .refresh-btn { background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; margin:10px 0; }
-  .refresh-btn:hover { background:#0056b3; }
-  table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
-  table, th, td { border:1px solid #ddd; }
-  th, td { padding:8px; text-align:center; }
-  th { background:#e9ecef; }
-  .chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f8f9fa; text-align:center; }
+.tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
+.tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px;}
+.tabs button.active { background:#007bff; color:white; }
+.tab-content { display:none; max-width:900px; margin:auto; text-align:left; }
+.tab-content.active { display:block; }
+.card { background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+#sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
+.refresh-btn { background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; margin:10px 0; }
+.refresh-btn:hover { background:#0056b3; }
+table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
+table, th, td { border:1px solid #ddd; }
+th, td { padding:8px; text-align:center; }
+th { background:#e9ecef; }
+.chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
 </style>
 </head>
 <body>
@@ -81,7 +81,7 @@
 </div>
 
 <script>
-  // ── Tabs
+  // Tabs
   function showTab(id) {
     document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -89,7 +89,7 @@
     document.querySelector('.tab-btn[onclick*="'+id+'"]').classList.add('active');
   }
 
-  // ── AQI Gauge for Bangladesh PM10
+  // AQI Gauge
   var aqiGauge = new JustGage({
     id: "aqMeter",
     value: 0,
@@ -109,32 +109,40 @@
     ]
   });
 
-  // ── Charts
-  const dustCtx = document.getElementById('dustChart').getContext('2d');
-  const dustChart = new Chart(dustCtx,{ type:'line', data:{ labels:[], datasets:[{ label:'PM10 (µg/m³)', data:[], borderColor:'blue', fill:false, tension:0.3 }]}, options:{ responsive:true } });
-  const rmsCtx = document.getElementById('rmsChart').getContext('2d');
-  const rmsChart = new Chart(rmsCtx,{ type:'line', data:{ labels:[], datasets:[{ label:'RMS', data:[], borderColor:'orange', fill:false }]}, options:{ responsive:true } });
-  const cvCtx = document.getElementById('cvChart').getContext('2d');
-  const cvChart = new Chart(cvCtx,{ type:'line', data:{ labels:[], datasets:[{ label:'CV%', data:[], borderColor:'green', fill:false }]}, options:{ responsive:true } });
+  // Charts
+  const dustChart = new Chart(document.getElementById('dustChart').getContext('2d'), {
+    type:'line',
+    data:{ labels:[], datasets:[{ label:'PM10 (µg/m³)', data:[], borderColor:'blue', fill:false, tension:0.3 }]},
+    options:{ responsive:true }
+  });
+  const rmsChart = new Chart(document.getElementById('rmsChart').getContext('2d'), {
+    type:'line',
+    data:{ labels:[], datasets:[{ label:'RMS', data:[], borderColor:'orange', fill:false }]},
+    options:{ responsive:true }
+  });
+  const cvChart = new Chart(document.getElementById('cvChart').getContext('2d'), {
+    type:'line',
+    data:{ labels:[], datasets:[{ label:'CV%', data:[], borderColor:'green', fill:false }]},
+    options:{ responsive:true }
+  });
 
-  // ── Utils
-  function calculateRMS(vals) { if(vals.length===0) return 0; const sqSum = vals.reduce((a,b)=>a + b*b,0); return Math.sqrt(sqSum/vals.length).toFixed(2); }
-  function calculateCV(vals) { if(vals.length===0) return 0; const mean = vals.reduce((a,b)=>a+b,0)/vals.length; const std = Math.sqrt(vals.map(v=> (v-mean)*(v-mean)).reduce((a,b)=>a+b,0)/vals.length); return ((std/mean)*100).toFixed(2); }
+  // Utils
+  function calculateRMS(vals){ if(vals.length===0)return 0; const sqSum=vals.reduce((a,b)=>a+b*b,0); return Math.sqrt(sqSum/vals.length).toFixed(2); }
+  function calculateCV(vals){ if(vals.length===0)return 0; const mean=vals.reduce((a,b)=>a+b,0)/vals.length; const std=Math.sqrt(vals.map(v=>(v-mean)*(v-mean)).reduce((a,b)=>a+b,0)/vals.length); return ((std/mean)*100).toFixed(2); }
 
-  // ── Data Storage
-  let dustValues = [];
-  let ts = [];
+  // Data storage
+  let dustValues=[], ts=[];
 
-  // ── ThingSpeak Config
-  const channelID = "3148948";      // <-- replace with your channel ID
-  const readAPIKey = "41YJ4QCD1RAGKEJ4";   // <-- replace with your read API key
-  const fieldNumber = 1;                    // PM10 in field1
-  const resultsCount = 1;                   // latest value
+  // ThingSpeak config
+  const channelID = "3148948";   // replace with your channel ID
+  const readAPIKey = "41YJ4QCD1RAGKEJ4"; // replace with your read API key
+  const fieldNumber = 1;                 // PM10 in field1
+  const resultsCount = 1;                // latest value
 
-  // ── Fetch PM10 Value from ThingSpeak
+  // Fetch PM10
   async function fetchDustValue(){
     const url = `https://api.thingspeak.com/channels/${channelID}/fields/${fieldNumber}.json?api_key=${readAPIKey}&results=${resultsCount}`;
-    try {
+    try{
       const response = await fetch(url);
       const data = await response.json();
       if(!data.feeds || data.feeds.length===0) return;
@@ -142,77 +150,63 @@
       const dust = parseFloat(data.feeds[0][`field${fieldNumber}`]);
       const now = new Date(data.feeds[0].created_at).toLocaleTimeString();
 
-      // Update storage
-      dustValues.push(dust);
-      ts.push(now);
+      dustValues.push(dust); ts.push(now);
 
-      // Update dashboard
-      document.getElementById('currentDust').textContent = dust;
-      document.getElementById('sensorStatus').style.background = 'green';
+      document.getElementById('currentDust').textContent=dust;
+      document.getElementById('sensorStatus').style.background='green';
       aqiGauge.refresh(dust);
 
-      // Update chart
-      dustChart.data.labels = ts;
-      dustChart.data.datasets[0].data = dustValues;
+      dustChart.data.labels=ts;
+      dustChart.data.datasets[0].data=dustValues;
       dustChart.update();
 
-      // Update table
       const tbody = document.querySelector("#dataTable tbody");
       const row = tbody.insertRow(0);
-      row.insertCell(0).textContent = now;
-      row.insertCell(1).textContent = dust.toFixed(1);
+      row.insertCell(0).textContent=now;
+      row.insertCell(1).textContent=dust.toFixed(1);
 
-      // Update Avg, RMS, CV%
       updateAvg();
       updateRmsCvTrend();
 
-    } catch(err) {
-      console.error("Error fetching ThingSpeak data:", err);
-      document.getElementById('sensorStatus').style.background = 'red';
+    } catch(err){
+      console.error("ThingSpeak fetch error:", err);
+      document.getElementById('sensorStatus').style.background='red';
     }
   }
 
   function updateAvg(){
-    const last10 = dustValues.slice(-10);
+    const last10=dustValues.slice(-10);
     if(last10.length===0) return;
-    const avg = (last10.reduce((a,b)=>a+b,0)/last10.length).toFixed(1);
-    document.getElementById('avgDust').textContent = avg;
+    document.getElementById('avgDust').textContent=(last10.reduce((a,b)=>a+b,0)/last10.length).toFixed(1);
   }
 
   function updateRmsCvTrend(){
-    const windowSize = 6; // approx 2 min if sampling every 20s
+    const windowSize=6; // ~2 min
     if(dustValues.length<windowSize) return;
-    const windowData = dustValues.slice(-windowSize);
-    const label = ts[ts.length-1];
+    const windowData=dustValues.slice(-windowSize);
+    const label=ts[ts.length-1];
+    const rms=calculateRMS(windowData);
+    const cv=calculateCV(windowData);
 
-    const rms = calculateRMS(windowData);
-    const cv = calculateCV(windowData);
-    document.getElementById('rmsValue').textContent = rms;
-    document.getElementById('cvValue').textContent = cv;
+    document.getElementById('rmsValue').textContent=rms;
+    document.getElementById('cvValue').textContent=cv;
 
     rmsChart.data.labels.push(label); rmsChart.data.datasets[0].data.push(rms); rmsChart.update();
     cvChart.data.labels.push(label); cvChart.data.datasets[0].data.push(cv); cvChart.update();
   }
 
-  // ── CSV Download
-  document.getElementById('downloadCSV').addEventListener('click', ()=>{
-    let csv = "Timestamp,PM10(µg/m³)\n";
-    document.querySelectorAll("#dataTable tbody tr").forEach(r=>{
-      csv += Array.from(r.cells).map(c=>c.textContent).join(",") + "\n";
-    });
-    const blob = new Blob([csv],{type:"text/csv"});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = "pm10_data.csv";
-    link.click();
+  // CSV Download
+  document.getElementById('downloadCSV').addEventListener('click',()=>{
+    let csv="Timestamp,PM10(µg/m³)\n";
+    document.querySelectorAll("#dataTable tbody tr").forEach(r=>{ csv+=Array.from(r.cells).map(c=>c.textContent).join(",")+"\n"; });
+    const blob=new Blob([csv],{type:"text/csv"});
+    const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download="pm10_data.csv"; link.click();
   });
 
-  // ── Clear Table
-  document.getElementById('clearTable').addEventListener('click', ()=>{
-    document.querySelector("#dataTable tbody").innerHTML = "";
-  });
+  // Clear table
+  document.getElementById('clearTable').addEventListener('click',()=>{ document.querySelector("#dataTable tbody").innerHTML=""; });
 
-  // ── Initial load + automatic fetch every 20s
+  // Initial fetch + every 20s
   fetchDustValue();
   setInterval(fetchDustValue, 20000);
 </script>
