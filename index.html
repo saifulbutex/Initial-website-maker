@@ -2,16 +2,21 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>DHT22 Dashboard</title>
+  <title>Dust Sensor Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { 
       font-family: Arial, sans-serif; 
       margin: 0; 
-      background: #f7f7f7;
+      background: #f4f6f8;
       text-align: center;
     }
-    h1 { background: #005b96; color: white; padding: 10px; margin: 0; }
+    h1 { 
+      background: #333;
+      color: white;
+      padding: 12px;
+      margin: 0;
+    }
     .container {
       display: flex;
       flex-direction: column;
@@ -21,8 +26,6 @@
     .top-section {
       display: flex;
       justify-content: center;
-      gap: 40px;
-      flex-wrap: wrap;
       padding: 20px;
       background: #fff;
       box-shadow: 0 0 8px rgba(0,0,0,0.1);
@@ -31,8 +34,8 @@
       margin-top: 20px;
     }
     .chart-container {
-      width: 400px;
-      height: 250px;
+      width: 600px;
+      height: 300px;
     }
     .bottom-section {
       margin-top: 30px;
@@ -52,35 +55,31 @@
       padding: 8px;
     }
     th {
-      background-color: #005b96;
+      background-color: #333;
       color: white;
     }
     tr:nth-child(even) { background-color: #f2f2f2; }
   </style>
 </head>
 <body>
-  <h1>DHT22 Sensor Dashboard</h1>
+  <h1>Dust Sensor Dashboard</h1>
   <div class="container">
 
-    <!-- Upper section for charts -->
+    <!-- Upper section for chart -->
     <div class="top-section">
       <div class="chart-box">
-        <canvas id="tempChart" class="chart-container"></canvas>
-      </div>
-      <div class="chart-box">
-        <canvas id="humChart" class="chart-container"></canvas>
+        <canvas id="dustChart" class="chart-container"></canvas>
       </div>
     </div>
 
     <!-- Lower section for table -->
     <div class="bottom-section">
-      <h2>Real-Time Sensor Data</h2>
+      <h2>Real-Time Dust Data</h2>
       <table id="dataTable">
         <thead>
           <tr>
             <th>Timestamp</th>
-            <th>Temperature (°C)</th>
-            <th>Humidity (%)</th>
+            <th>Dust (µg/m³)</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -94,7 +93,7 @@
     const readAPIKey = "41YJ4QCD1RAGKEJ4";   
     const resultsCount = 20;
 
-    let tempChart, humChart;
+    let dustChart;
 
     async function fetchData() {
       const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readAPIKey}&results=${resultsCount}`;
@@ -102,71 +101,46 @@
       const data = await response.json();
 
       const timestamps = data.feeds.map(f => f.created_at.substring(11,19));
-      const tempData = data.feeds.map(f => parseFloat(f.field1));
-      const humData = data.feeds.map(f => parseFloat(f.field2));
+      const dustData = data.feeds.map(f => parseFloat(f.field1));
 
-      // Update or create temperature chart
-      if (!tempChart) {
-        const ctx = document.getElementById('tempChart').getContext('2d');
-        tempChart = new Chart(ctx, {
+      // Update or create dust chart
+      if (!dustChart) {
+        const ctx = document.getElementById('dustChart').getContext('2d');
+        dustChart = new Chart(ctx, {
           type: 'line',
           data: {
             labels: timestamps,
             datasets: [{
-              label: 'Temperature (°C)',
-              data: tempData,
-              borderColor: 'red',
-              backgroundColor: 'rgba(255,0,0,0.1)',
-              fill: true
+              label: 'Dust (µg/m³)',
+              data: dustData,
+              borderColor: '#e67e22',
+              backgroundColor: 'rgba(230,126,34,0.2)',
+              fill: true,
+              tension: 0.3
             }]
           },
           options: { 
             responsive: true,
             plugins:{legend:{display:true}},
-            scales:{x:{display:true}, y:{beginAtZero:true}} 
+            scales:{
+              x:{title:{display:true,text:'Time'}},
+              y:{beginAtZero:true, title:{display:true,text:'Dust (µg/m³)'}}
+            } 
           }
         });
       } else {
-        tempChart.data.labels = timestamps;
-        tempChart.data.datasets[0].data = tempData;
-        tempChart.update();
-      }
-
-      // Update or create humidity chart
-      if (!humChart) {
-        const ctx2 = document.getElementById('humChart').getContext('2d');
-        humChart = new Chart(ctx2, {
-          type: 'line',
-          data: {
-            labels: timestamps,
-            datasets: [{
-              label: 'Humidity (%)',
-              data: humData,
-              borderColor: 'blue',
-              backgroundColor: 'rgba(0,0,255,0.1)',
-              fill: true
-            }]
-          },
-          options: { 
-            responsive: true,
-            plugins:{legend:{display:true}},
-            scales:{x:{display:true}, y:{beginAtZero:true}} 
-          }
-        });
-      } else {
-        humChart.data.labels = timestamps;
-        humChart.data.datasets[0].data = humData;
-        humChart.update();
+        dustChart.data.labels = timestamps;
+        dustChart.data.datasets[0].data = dustData;
+        dustChart.update();
       }
 
       // Update Table
       const tbody = document.getElementById("dataTable").querySelector("tbody");
-      tbody.innerHTML = ""; // Clear previous rows
+      tbody.innerHTML = "";
       for (let i = 0; i < timestamps.length; i++) {
         const row = `<tr>
                       <td>${timestamps[i]}</td>
-                      <td>${tempData[i].toFixed(1)}</td>
-                      <td>${humData[i].toFixed(1)}</td>
+                      <td>${dustData[i].toFixed(1)}</td>
                     </tr>`;
         tbody.innerHTML += row;
       }
