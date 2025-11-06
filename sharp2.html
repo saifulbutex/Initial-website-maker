@@ -1,97 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dust Dashboard with Half-Circle AQI Meter</title>
-<script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
-<style>
-body { font-family: Arial; text-align:center; background:#f8f9fa; padding:20px; }
-.card { display:inline-block; background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin:20px; }
-#sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
-.refresh-btn { background:#007bff; color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; margin-left:10px; font-size:12px; }
-.refresh-btn:hover { background:#0056b3; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PM10 Dust Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f8f9fa; text-align:center; }
+    .tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
+    .tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px;}
+    .tabs button.active { background:#007bff; color:white; }
+    .tab-content { display:none; max-width:900px; margin:auto; text-align:left; }
+    .tab-content.active { display:block; }
+    .card { background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+    #sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
+    .refresh-btn { background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; margin:10px 0; }
+    .refresh-btn:hover { background:#0056b3; }
+    table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
+    table, th, td { border:1px solid #ddd; }
+    th, td { padding:8px; text-align:center; }
+    th { background:#e9ecef; }
+    .chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+  </style>
 </head>
 <body>
 
-<h2>🌫️ Dust Monitoring Dashboard</h2>
+<h2>🌫️ PM10 Dust Monitoring Dashboard</h2>
 
-<div class="card">
-  <h3>
-    Current Dust: <span id="currentDust">--</span> µg/m³
-    <div id="sensorStatus" style="background:red;"></div>
-    <button class="refresh-btn" id="refreshDust">Refresh Dust</button>
-  </h3>
-  <div id="aqMeter" style="width:250px; height:150px; margin:auto;"></div>
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
+  <button class="tab-btn" onclick="showTab('table')">Table</button>
+  <button class="tab-btn" onclick="showTab('stats')">Statistics</button>
+</div>
+
+<!-- Dashboard Tab -->
+<div id="dashboard" class="tab-content active">
+  <div class="card">
+    <h3>
+      Current PM10: <span id="currentDust">--</span> µg/m³
+      <div id="sensorStatus" style="background:red;"></div>
+    </h3>
+    <div id="aqMeter" style="width:260px; height:160px; margin:auto;"></div>
+  </div>
+
+  <div class="card">
+    Avg (10 samples): <span id="avgDust">--</span> µg/m³
+  </div>
+
+  <div class="card">
+    RMS (2 min): <span id="rmsValue">--</span><br>
+    CV% (2 min): <span id="cvValue">--</span>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="dustChart"></canvas>
+  </div>
+</div>
+
+<!-- Table Tab -->
+<div id="table" class="tab-content">
+  <h3>Recorded PM10 Data</h3>
+  <button class="refresh-btn" id="clearTable">Clear Table</button>
+  <table id="dataTable">
+    <thead><tr><th>Timestamp</th><th>PM10 (µg/m³)</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <button class="refresh-btn" id="downloadCSV">Download CSV</button>
+</div>
+
+<!-- Statistics Tab -->
+<div id="stats" class="tab-content">
+  <div class="chart-container">
+    <canvas id="rmsChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="cvChart"></canvas>
+  </div>
 </div>
 
 <script>
-let dustValues = [];
-let timestamps = [];
+  // ── Tabs
+  function showTab(id) {
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-btn[onclick*="'+id+'"]').classList.add('active');
+  }
 
-// ------------------ Gauge ------------------
-let aqiGauge = new JustGage({
-  id: "aqMeter",
-  value: 0,
-  min: 0,
-  max: 200,
-  title: "AQI",
-  label: "µg/m³",
-  levelColors: ["green","yellow","orange","red"],
-  gaugeWidthScale: 0.6,
-  pointer: true,
-  startAnimationTime: 1000,
-  startAnimationType: ">",
-  counter: true,
-  donut: true,
-  hideMinMax: true,
-  customSectors: [{
-    color: "green",
-    lo: 0,
-    hi: 35
-  },{
-    color: "yellow",
-    lo: 36,
-    hi: 75
-  },{
-    color: "orange",
-    lo: 76,
-    hi: 150
-  },{
-    color: "red",
-    lo: 151,
-    hi: 200
-  }]
-});
+  // ── AQI Gauge for Bangladesh PM10
+  var aqiGauge = new JustGage({
+    id: "aqMeter",
+    value: 0,
+    min: 0,
+    max: 300,
+    title: "AQI (PM10)",
+    label: "µg/m³",
+    gaugeWidthScale:0.6,
+    donut:true,
+    pointer:true,
+    hideMinMax:true,
+    customSectors: [
+      { color: "green",  lo:0,   hi:40 },
+      { color: "yellow", lo:41,  hi:65 },
+      { color: "orange", lo:66,  hi:150 },
+      { color: "red",    lo:151, hi:300 }
+    ]
+  });
 
-// ------------------ Utils ------------------
-function calculateRMS(values){ if(values.length===0) return 0; const sqSum=values.reduce((a,b)=>a+b**2,0); return Math.sqrt(sqSum/values.length).toFixed(2); }
-function calculateCV(values){ if(values.length===0) return 0; const mean=values.reduce((a,b)=>a+b,0)/values.length; const stdDev=Math.sqrt(values.map(v=>(v-mean)**2).reduce((a,b)=>a+b)/values.length); return ((stdDev/mean)*100).toFixed(2); }
-function getAQIColor(dust){ if(dust<=35) return 'green'; if(dust<=75) return 'yellow'; if(dust<=150) return 'orange'; return 'red'; }
+  // ── Charts
+  const dustCtx = document.getElementById('dustChart').getContext('2d');
+  const dustChart = new Chart(dustCtx,{ type:'line', data:{ labels:[], datasets:[{ label:'PM10 (µg/m³)', data:[], borderColor:'blue', fill:false, tension:0.3 }]}, options:{ responsive:true } });
+  const rmsCtx = document.getElementById('rmsChart').getContext('2d');
+  const rmsChart = new Chart(rmsCtx,{ type:'line', data:{ labels:[], datasets:[{ label:'RMS', data:[], borderColor:'orange', fill:false }]}, options:{ responsive:true } });
+  const cvCtx = document.getElementById('cvChart').getContext('2d');
+  const cvChart = new Chart(cvCtx,{ type:'line', data:{ labels:[], datasets:[{ label:'CV%', data:[], borderColor:'green', fill:false }]}, options:{ responsive:true } });
 
-// ------------------ ThingSpeak Fetch ------------------
-async function fetchDust(){
-  // Replace with ThingSpeak API fetch
-  const dust = parseFloat((Math.random()*200).toFixed(1));
-  const now = new Date().toLocaleTimeString();
-  dustValues.push(dust);
-  timestamps.push(now);
+  // ── Utils
+  function calculateRMS(vals) { if(vals.length===0) return 0; const sqSum = vals.reduce((a,b)=>a + b*b,0); return Math.sqrt(sqSum/vals.length).toFixed(2); }
+  function calculateCV(vals) { if(vals.length===0) return 0; const mean = vals.reduce((a,b)=>a+b,0)/vals.length; const std = Math.sqrt(vals.map(v=> (v-mean)*(v-mean)).reduce((a,b)=>a+b,0)/vals.length); return ((std/mean)*100).toFixed(2); }
 
-  // Update current dust value
-  document.getElementById('currentDust').textContent = dust;
-  document.getElementById('sensorStatus').style.background = 'green'; // assume connected
+  // ── Data Storage
+  let dustValues = [];
+  let ts = [];
 
-  // Update AQI gauge
-  aqiGauge.refresh(dust);
-}
+  // ── Fetch PM10 Value (replace with ThingSpeak API)
+  async function fetchDustValue(){
+    // For testing: random value. Replace with ThingSpeak fetch
+    const dust = parseFloat((Math.random()*300).toFixed(1));
+    const now = new Date().toLocaleTimeString();
+    dustValues.push(dust);
+    ts.push(now);
 
-// ------------------ Refresh Button ------------------
-document.getElementById('refreshDust').addEventListener('click', fetchDust);
+    // Dashboard updates
+    document.getElementById('currentDust').textContent = dust;
+    document.getElementById('sensorStatus').style.background = 'green';
+    aqiGauge.refresh(dust);
 
-// ------------------ Initial Load ------------------
-window.onload = fetchDust();
+    // Dust chart
+    dustChart.data.labels = ts;
+    dustChart.data.datasets[0].data = dustValues;
+    dustChart.update();
+
+    // Table
+    const tbody = document.querySelector("#dataTable tbody");
+    const row = tbody.insertRow(0);
+    row.insertCell(0).textContent = now;
+    row.insertCell(1).textContent = dust.toFixed(1);
+
+    // Update average, RMS, CV%
+    updateAvg();
+    updateRmsCvTrend();
+  }
+
+  function updateAvg(){
+    const last10 = dustValues.slice(-10);
+    if(last10.length===0) return;
+    const avg = (last10.reduce((a,b)=>a+b,0)/last10.length).toFixed(1);
+    document.getElementById('avgDust').textContent = avg;
+  }
+
+  function updateRmsCvTrend(){
+    const windowSize = 6;
+    if(dustValues.length<windowSize) return;
+    const windowData = dustValues.slice(-windowSize);
+    const label = ts[ts.length-1];
+
+    // latest
+    const rms = calculateRMS(windowData);
+    const cv = calculateCV(windowData);
+    document.getElementById('rmsValue').textContent = rms;
+    document.getElementById('cvValue').textContent = cv;
+
+    // update charts
+    rmsChart.data.labels.push(label); rmsChart.data.datasets[0].data.push(rms); rmsChart.update();
+    cvChart.data.labels.push(label); cvChart.data.datasets[0].data.push(cv); cvChart.update();
+  }
+
+  // ── CSV Download
+  document.getElementById('downloadCSV').addEventListener('click', ()=>{
+    let csv = "Timestamp,PM10(µg/m³)\n";
+    document.querySelectorAll("#dataTable tbody tr").forEach(r=>{
+      csv += Array.from(r.cells).map(c=>c.textContent).join(",") + "\n";
+    });
+    const blob = new Blob([csv],{type:"text/csv"});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = "pm10_data.csv";
+    link.click();
+  });
+
+  // ── Clear Table
+  document.getElementById('clearTable').addEventListener('click', ()=>{
+    document.querySelector("#dataTable tbody").innerHTML = "";
+  });
+
+  // ── Initial load + automatic fetch every 20s
+  fetchDustValue();
+  setInterval(fetchDustValue, 20000);
 </script>
 
 </body>
