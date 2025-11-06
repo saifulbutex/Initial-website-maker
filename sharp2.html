@@ -1,206 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dust Monitoring Dashboard - Tabs</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      margin: 0; padding: 0;
-      background-color: #f8f9fa; color: #333;
-      display: flex; flex-direction: column; align-items: center;
-    }
-
-    h2 { margin-top: 10px; text-align: center; }
-
-    .tabs {
-      display: flex; gap: 5px;
-      margin: 15px 0;
-    }
-
-    .tabs button {
-      padding: 10px 20px; cursor: pointer;
-      border: none; border-radius: 6px;
-      background: #e9ecef; font-size: 14px;
-    }
-
-    .tabs button.active { background: #007bff; color: white; }
-
-    .tab-content {
-      display: none; width: 95%; max-width: 900px;
-    }
-
-    .tab-content.active { display: block; }
-
-    .summary { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 20px; justify-content: center; }
-    .card { background: white; border-radius: 12px; padding: 15px 20px; min-width: 150px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    #aqStatus { font-weight: bold; padding: 4px 10px; border-radius: 6px; }
-
-    .chart-container { width: 100%; height: 400px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 20px; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    table, th, td { border: 1px solid #ddd; }
-    th, td { padding: 8px; text-align: center; }
-    th { background-color: #e9ecef; }
-
-    #exportBtn { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-    #exportBtn:hover { background: #0056b3; }
-
-    @media (max-width: 600px) {
-      .chart-container { height: 250px; }
-      .summary .card { font-size: 13px; min-width: 130px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dust Monitoring Dashboard - 3 Tabs with Refresh</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: Arial; background:#f8f9fa; margin:0; padding:20px; text-align:center; }
+.tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
+.tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px; }
+.tabs button.active { background:#007bff; color:white; }
+.tab-content { display:none; max-width:900px; margin:auto; }
+.tab-content.active { display:block; }
+.card { display:inline-block; background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+#sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
+.aq-container { position:relative; width:300px; height:20px; background:#ddd; border-radius:10px; margin:10px auto 0; }
+#aqMeter { height:100%; width:0%; border-radius:10px; background:green; transition:0.5s; }
+.aq-labels { display:flex; justify-content:space-between; font-size:12px; width:300px; margin:5px auto 0; }
+.refresh-btn { background:#007bff; color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; margin-left:10px; font-size:12px; }
+.refresh-btn:hover { background:#0056b3; }
+table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
+table, th, td { border:1px solid #ddd; }
+th, td { padding:8px; text-align:center; }
+th { background:#e9ecef; }
+.chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+</style>
 </head>
 <body>
 
-  <h2>🌫️ Dust Monitoring Dashboard</h2>
+<h2>🌫️ Dust Monitoring Dashboard</h2>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
-    <button class="tab-btn" onclick="showTab('table')">Table</button>
-    <button class="tab-btn" onclick="showTab('statistics')">Statistics</button>
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
+  <button class="tab-btn" onclick="showTab('table')">Table</button>
+  <button class="tab-btn" onclick="showTab('statistics')">Statistics</button>
+</div>
+
+<!-- Tab Contents -->
+<div id="dashboard" class="tab-content active">
+  <div class="card">
+    <h3>
+      Current Dust: <span id="currentDust">--</span> µg/m³
+      <div id="sensorStatus" style="background:red;"></div>
+      <button class="refresh-btn" id="refreshDust">Refresh Dust</button>
+    </h3>
+    <div class="aq-container"><div id="aqMeter"></div></div>
+    <div class="aq-labels"><span>Good</span><span>Moderate</span><span>Unhealthy</span><span>Hazardous</span></div>
   </div>
 
-  <!-- Tab Contents -->
-  <div id="dashboard" class="tab-content active">
-    <div class="summary">
-      <div class="card">Current Dust<br><span id="currentDust">--</span> µg/m³</div>
-      <div class="card">Avg (10 samples)<br><span id="avgDust">--</span> µg/m³</div>
-      <div class="card">RMS (1 min)<br><span id="rmsNow">--</span></div>
-      <div class="card">CV% (1 min)<br><span id="cvNow">--</span></div>
-      <div class="card">Air Quality<br><span id="aqStatus">--</span></div>
-    </div>
-    <div class="chart-container">
-      <canvas id="dustChart"></canvas>
-    </div>
+  <div class="card">
+    Avg (10 samples): <span id="avgDust">--</span>
+    <button class="refresh-btn" id="refreshAvg">Refresh Avg</button>
   </div>
 
-  <div id="table" class="tab-content">
-    <h3>Recorded Data</h3>
-    <table id="dataTable">
-      <thead>
-        <tr>
-          <th>Timestamp</th>
-          <th>Dust (µg/m³)</th>
-          <th>RMS (1 min)</th>
-          <th>CV% (1 min)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <button id="exportBtn">Download CSV</button>
+  <div class="card">
+    RMS (2 min): <span id="rmsValue">--</span>
+    CV% (2 min): <span id="cvValue">--</span>
+    <button class="refresh-btn" id="refreshRMS">Refresh RMS & CV%</button>
   </div>
 
-  <div id="statistics" class="tab-content">
-    <div class="chart-container">
-      <canvas id="rmsChart"></canvas>
-    </div>
-    <div class="chart-container">
-      <canvas id="cvChart"></canvas>
-    </div>
+  <div class="chart-container">
+    <canvas id="dustChart"></canvas>
   </div>
+</div>
 
-  <script>
-    // ------------------ Tabs logic ------------------
-    function showTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector('.tab-btn[onclick*="'+tabId+'"]').classList.add('active');
-    }
+<div id="table" class="tab-content">
+  <h3>Recorded Dust Data</h3>
+  <button class="refresh-btn" id="refreshTable">Clear Table</button>
+  <table id="dataTable">
+    <thead>
+      <tr><th>Timestamp</th><th>Dust (µg/m³)</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-    // ------------------ ThingSpeak config ------------------
-    const channelID = "3148948";
-    const readAPIKey = "41YJ4QCD1RAGKEJ4";
-    const resultsCount = 20;
+<div id="statistics" class="tab-content">
+  <div class="chart-container">
+    <canvas id="rmsChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <canvas id="cvChart"></canvas>
+  </div>
+</div>
 
-    // ------------------ Charts ------------------
-    const dustCtx = document.getElementById('dustChart').getContext('2d');
-    const dustChart = new Chart(dustCtx, { type:'line', data:{ labels:[], datasets:[{ label:'Dust (µg/m³)', data:[], borderColor:'rgba(0,123,255,0.9)', backgroundColor:'rgba(0,123,255,0.1)', fill:true, tension:0.3 }]}, options:{ responsive:true, scales:{ x:{title:{display:true,text:'Time'}}, y:{title:{display:true,text:'Dust (µg/m³)'}} } } });
+<script>
+// ------------------ Tabs ------------------
+function showTab(tabId){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.tab-btn[onclick*="'+tabId+'"]').classList.add('active');
+}
 
-    const rmsCtx = document.getElementById('rmsChart').getContext('2d');
-    const rmsChart = new Chart(rmsCtx, { type:'line', data:{ labels:[], datasets:[{ label:'RMS', data:[], borderColor:'orange', fill:false }] }, options:{ responsive:true, scales:{ x:{title:{display:true,text:'Time'}}, y:{title:{display:true,text:'RMS'}} } } });
+// ------------------ Charts ------------------
+const dustCtx = document.getElementById('dustChart').getContext('2d');
+const dustChart = new Chart(dustCtx, { type:'line', data:{ labels:[], datasets:[{label:'Dust (µg/m³)', data:[], borderColor:'blue', fill:false, tension:0.3}] }, options:{ responsive:true } });
 
-    const cvCtx = document.getElementById('cvChart').getContext('2d');
-    const cvChart = new Chart(cvCtx, { type:'line', data:{ labels:[], datasets:[{ label:'CV%', data:[], borderColor:'green', fill:false }] }, options:{ responsive:true, scales:{ x:{title:{display:true,text:'Time'}}, y:{title:{display:true,text:'CV%'}} } } });
+const rmsCtx = document.getElementById('rmsChart').getContext('2d');
+const rmsChart = new Chart(rmsCtx, { type:'line', data:{ labels:[], datasets:[{label:'RMS', data:[], borderColor:'orange', fill:false}] }, options:{ responsive:true } });
 
-    // ------------------ Utils ------------------
-    function getAirQualityStatus(dust) {
-      if(dust<=35) return {text:"Clean", color:"#28a745"};
-      if(dust<=75) return {text:"Moderate", color:"#ffc107"};
-      if(dust<=150) return {text:"Unhealthy", color:"#fd7e14"};
-      return {text:"Hazardous", color:"#dc3545"};
-    }
+const cvCtx = document.getElementById('cvChart').getContext('2d');
+const cvChart = new Chart(cvCtx, { type:'line', data:{ labels:[], datasets:[{label:'CV%', data:[], borderColor:'green', fill:false}] }, options:{ responsive:true } });
 
-    function calculateRMS(values){ if(values.length===0) return 0; const sqSum=values.reduce((a,b)=>a+b**2,0); return Math.sqrt(sqSum/values.length).toFixed(2); }
-    function calculateCV(values){ if(values.length===0) return 0; const mean=values.reduce((a,b)=>a+b,0)/values.length; const stdDev=Math.sqrt(values.map(v=>(v-mean)**2).reduce((a,b)=>a+b)/values.length); return ((stdDev/mean)*100).toFixed(2); }
+// ------------------ Utils ------------------
+function calculateRMS(values){ if(values.length===0) return 0; const sqSum=values.reduce((a,b)=>a+b**2,0); return Math.sqrt(sqSum/values.length).toFixed(2); }
+function calculateCV(values){ if(values.length===0) return 0; const mean=values.reduce((a,b)=>a+b,0)/values.length; const stdDev=Math.sqrt(values.map(v=>(v-mean)**2).reduce((a,b)=>a+b)/values.length); return ((stdDev/mean)*100).toFixed(2); }
+function getAQIColor(dust){ if(dust<=35) return 'green'; if(dust<=75) return 'yellow'; if(dust<=150) return 'orange'; return 'red'; }
 
-    // ------------------ Data Fetch ------------------
-    let allDust = []; let allRMS=[]; let allCV=[];
-    async function fetchData() {
-      try {
-        const url=`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readAPIKey}&results=${resultsCount}`;
-        const response=await fetch(url);
-        const data=await response.json();
-        const dustData=data.feeds.map(f=>parseFloat(f.field1)).filter(v=>!isNaN(v));
-        const timestamps=data.feeds.map(f=>f.created_at.substring(11,19));
-        if(dustData.length===0) return;
+// ------------------ Data ------------------
+let dustValues=[]; // all collected dust
+let timestamps=[];
 
-        // ------------------ Summary Cards ------------------
-        const current=dustData[dustData.length-1];
-        const avg=(dustData.reduce((a,b)=>a+b,0)/dustData.length).toFixed(1);
-        const rms=calculateRMS(dustData);
-        const cv=calculateCV(dustData);
+// ------------------ ThingSpeak Fetch ------------------
+async function fetchDust(){
+  // Replace with ThingSpeak fetch:
+  const dust = parseFloat((Math.random()*200).toFixed(1));
+  return dust;
+}
 
-        document.getElementById('currentDust').textContent=current.toFixed(1);
-        document.getElementById('avgDust').textContent=avg;
-        document.getElementById('rmsNow').textContent=rms;
-        document.getElementById('cvNow').textContent=cv;
+// ------------------ Event Handlers ------------------
+document.getElementById('refreshDust').addEventListener('click', async ()=>{
+  const dust = await fetchDust();
+  const now = new Date().toLocaleTimeString();
+  document.getElementById('currentDust').textContent = dust;
+  document.getElementById('sensorStatus').style.background = 'green';
+  document.getElementById('aqMeter').style.width = Math.min(dust/200*100,100)+'%';
+  document.getElementById('aqMeter').style.background = getAQIColor(dust);
 
-        const aq=getAirQualityStatus(current);
-        const aqElem=document.getElementById('aqStatus');
-        aqElem.textContent=aq.text; aqElem.style.color=aq.color;
+  dustValues.push(dust);
+  timestamps.push(now);
 
-        // ------------------ Chart Update ------------------
-        dustChart.data.labels = timestamps;
-        dustChart.data.datasets[0].data = dustData;
-        dustChart.update();
+  dustChart.data.labels = timestamps;
+  dustChart.data.datasets[0].data = dustValues;
+  dustChart.update();
 
-        // ------------------ Table Update ------------------
-        const tbody=document.querySelector("#dataTable tbody");
-        const row=tbody.insertRow(0);
-        row.insertCell(0).textContent = timestamps[timestamps.length-1];
-        row.insertCell(1).textContent = current.toFixed(1);
-        row.insertCell(2).textContent = rms;
-        row.insertCell(3).textContent = cv;
-        if(tbody.rows.length>100) tbody.deleteRow(100);
+  // Update table
+  const tbody = document.querySelector("#dataTable tbody");
+  const row = tbody.insertRow(0);
+  row.insertCell(0).textContent = now;
+  row.insertCell(1).textContent = dust.toFixed(1);
+});
 
-        // ------------------ Stats Tab Charts ------------------
-        allDust.push(current); allRMS.push(rms); allCV.push(cv);
-        rmsChart.data.labels=timestamps; rmsChart.data.datasets[0].data=allRMS; rmsChart.update();
-        cvChart.data.labels=timestamps; cvChart.data.datasets[0].data=allCV; cvChart.update();
+document.getElementById('refreshAvg').addEventListener('click', ()=>{
+  if(dustValues.length===0) return;
+  const last10 = dustValues.slice(-10);
+  const avg = (last10.reduce((a,b)=>a+b,0)/last10.length).toFixed(1);
+  document.getElementById('avgDust').textContent = avg;
+});
 
-      } catch(err){ console.error("Error fetching data:", err); }
-    }
+document.getElementById('refreshRMS').addEventListener('click', ()=>{
+  // last 2 min, assuming 1 sample per 20 sec, approx last 6 values
+  const last2min = dustValues.slice(-6);
+  const rms = calculateRMS(last2min);
+  const cv = calculateCV(last2min);
+  document.getElementById('rmsValue').textContent = rms;
+  document.getElementById('cvValue').textContent = cv;
 
-    fetchData(); setInterval(fetchData, 20000);
+  // Update statistics charts
+  rmsChart.data.labels = timestamps.slice(-6);
+  rmsChart.data.datasets[0].data = last2min.map(v=>calculateRMS([v]));
+  rmsChart.update();
 
-    // ------------------ CSV Export ------------------
-    document.getElementById("exportBtn").addEventListener("click",()=>{
-      let csv="Timestamp,Dust,RMS,CV%\n";
-      document.querySelectorAll("#dataTable tbody tr").forEach(r=>{
-        csv+=Array.from(r.children).map(td=>td.innerText).join(",")+"\n";
-      });
-      const blob=new Blob([csv],{type:"text/csv"});
-      const link=document.createElement("a");
-      link.href=URL.createObjectURL(blob);
-      link.download="dust_data.csv"; link.click();
-    });
-  </script>
+  cvChart.data.labels = timestamps.slice(-6);
+  cvChart.data.datasets[0].data = last2min.map(v=>calculateCV([v]));
+  cvChart.update();
+});
+
+// Clear table
+document.getElementById('refreshTable').addEventListener('click', ()=>{
+  document.querySelector("#dataTable tbody").innerHTML = '';
+});
+</script>
 
 </body>
 </html>
