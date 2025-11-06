@@ -1,29 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PM10 Dust Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f8f9fa; text-align:center; }
-    .tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
-    .tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px;}
-    .tabs button.active { background:#007bff; color:white; }
-    .tab-content { display:none; max-width:900px; margin:auto; text-align:left; }
-    .tab-content.active { display:block; }
-    .card { background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-    #sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
-    .refresh-btn { background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; margin:10px 0; }
-    .refresh-btn:hover { background:#0056b3; }
-    table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
-    table, th, td { border:1px solid #ddd; }
-    th, td { padding:8px; text-align:center; }
-    th { background:#e9ecef; }
-    .chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM10 Dust Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f8f9fa; text-align:center; }
+  .tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
+  .tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px;}
+  .tabs button.active { background:#007bff; color:white; }
+  .tab-content { display:none; max-width:900px; margin:auto; text-align:left; }
+  .tab-content.active { display:block; }
+  .card { background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+  #sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
+  .refresh-btn { background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; margin:10px 0; }
+  .refresh-btn:hover { background:#0056b3; }
+  table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
+  table, th, td { border:1px solid #ddd; }
+  th, td { padding:8px; text-align:center; }
+  th { background:#e9ecef; }
+  .chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
+</style>
 </head>
 <body>
 
@@ -125,33 +125,51 @@
   let dustValues = [];
   let ts = [];
 
-  // ── Fetch PM10 Value (replace with ThingSpeak API)
+  // ── ThingSpeak Config
+  const channelID = "3148948";      // <-- replace with your channel ID
+  const readAPIKey = "41YJ4QCD1RAGKEJ4";   // <-- replace with your read API key
+  const fieldNumber = 1;                    // PM10 in field1
+  const resultsCount = 1;                   // latest value
+
+  // ── Fetch PM10 Value from ThingSpeak
   async function fetchDustValue(){
-    // For testing: random value. Replace with ThingSpeak fetch
-    const dust = parseFloat((Math.random()*300).toFixed(1));
-    const now = new Date().toLocaleTimeString();
-    dustValues.push(dust);
-    ts.push(now);
+    const url = `https://api.thingspeak.com/channels/${channelID}/fields/${fieldNumber}.json?api_key=${readAPIKey}&results=${resultsCount}`;
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if(!data.feeds || data.feeds.length===0) return;
 
-    // Dashboard updates
-    document.getElementById('currentDust').textContent = dust;
-    document.getElementById('sensorStatus').style.background = 'green';
-    aqiGauge.refresh(dust);
+      const dust = parseFloat(data.feeds[0][`field${fieldNumber}`]);
+      const now = new Date(data.feeds[0].created_at).toLocaleTimeString();
 
-    // Dust chart
-    dustChart.data.labels = ts;
-    dustChart.data.datasets[0].data = dustValues;
-    dustChart.update();
+      // Update storage
+      dustValues.push(dust);
+      ts.push(now);
 
-    // Table
-    const tbody = document.querySelector("#dataTable tbody");
-    const row = tbody.insertRow(0);
-    row.insertCell(0).textContent = now;
-    row.insertCell(1).textContent = dust.toFixed(1);
+      // Update dashboard
+      document.getElementById('currentDust').textContent = dust;
+      document.getElementById('sensorStatus').style.background = 'green';
+      aqiGauge.refresh(dust);
 
-    // Update average, RMS, CV%
-    updateAvg();
-    updateRmsCvTrend();
+      // Update chart
+      dustChart.data.labels = ts;
+      dustChart.data.datasets[0].data = dustValues;
+      dustChart.update();
+
+      // Update table
+      const tbody = document.querySelector("#dataTable tbody");
+      const row = tbody.insertRow(0);
+      row.insertCell(0).textContent = now;
+      row.insertCell(1).textContent = dust.toFixed(1);
+
+      // Update Avg, RMS, CV%
+      updateAvg();
+      updateRmsCvTrend();
+
+    } catch(err) {
+      console.error("Error fetching ThingSpeak data:", err);
+      document.getElementById('sensorStatus').style.background = 'red';
+    }
   }
 
   function updateAvg(){
@@ -162,18 +180,16 @@
   }
 
   function updateRmsCvTrend(){
-    const windowSize = 6;
+    const windowSize = 6; // approx 2 min if sampling every 20s
     if(dustValues.length<windowSize) return;
     const windowData = dustValues.slice(-windowSize);
     const label = ts[ts.length-1];
 
-    // latest
     const rms = calculateRMS(windowData);
     const cv = calculateCV(windowData);
     document.getElementById('rmsValue').textContent = rms;
     document.getElementById('cvValue').textContent = cv;
 
-    // update charts
     rmsChart.data.labels.push(label); rmsChart.data.datasets[0].data.push(rms); rmsChart.update();
     cvChart.data.labels.push(label); cvChart.data.datasets[0].data.push(cv); cvChart.update();
   }
