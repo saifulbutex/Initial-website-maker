@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dust Monitoring Dashboard</title>
+  <title>Dust Monitoring Dashboard (ThingSpeak)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -16,98 +16,44 @@
       flex-direction: column;
       align-items: center;
     }
-
-    h2 {
-      margin-top: 10px;
-      text-align: center;
-    }
-
+    h2 { margin-top: 10px; text-align: center; }
     .summary {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin: 10px 0 20px 0;
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 1rem; margin: 10px 0 20px 0;
     }
-
     .card {
-      background: white;
-      border-radius: 12px;
-      padding: 15px 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      min-width: 160px;
-      text-align: center;
-      font-size: 15px;
+      background: white; border-radius: 12px;
+      padding: 15px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      min-width: 160px; text-align: center; font-size: 15px;
     }
-
-    #aqStatus {
-      font-weight: bold;
-      padding: 4px 10px;
-      border-radius: 6px;
-    }
-
+    #aqStatus { font-weight: bold; padding: 4px 10px; border-radius: 6px; }
     .chart-container {
-      width: 90%;
-      max-width: 900px;
-      height: 400px;
-      background: white;
-      border-radius: 12px;
+      width: 90%; max-width: 900px; height: 400px;
+      background: white; border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 10px;
-      margin-bottom: 20px;
+      padding: 10px; margin-bottom: 20px;
     }
-
     .bottom-section {
-      width: 90%;
-      max-width: 900px;
-      background: white;
-      border-radius: 12px;
+      width: 90%; max-width: 900px;
+      background: white; border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 15px;
-      margin-bottom: 30px;
+      padding: 15px; margin-bottom: 30px;
     }
-
     table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
+      width: 100%; border-collapse: collapse; font-size: 14px;
     }
-
-    table, th, td {
-      border: 1px solid #ddd;
-    }
-
-    th, td {
-      padding: 8px;
-      text-align: center;
-    }
-
-    th {
-      background-color: #e9ecef;
-    }
-
+    table, th, td { border: 1px solid #ddd; }
+    th, td { padding: 8px; text-align: center; }
+    th { background-color: #e9ecef; }
     #exportBtn {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
+      background: #007bff; color: white; border: none;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer;
       margin-top: 10px;
     }
-
-    #exportBtn:hover {
-      background: #0056b3;
-    }
-
+    #exportBtn:hover { background: #0056b3; }
     @media (max-width: 600px) {
-      .chart-container {
-        height: 250px;
-      }
-      .summary .card {
-        font-size: 13px;
-        min-width: 130px;
-      }
+      .chart-container { height: 250px; }
+      .summary .card { font-size: 13px; min-width: 130px; }
     }
   </style>
 </head>
@@ -144,6 +90,12 @@
   </div>
 
   <script>
+    // 🟢 ThingSpeak details
+    const channelID = "3148948";
+    const readAPIKey = "41YJ4QCD1RAGKEJ4";
+    const resultsCount = 20;
+
+    // 🟢 Chart setup
     const ctx = document.getElementById('dustChart').getContext('2d');
     const dustChart = new Chart(ctx, {
       type: 'line',
@@ -167,9 +119,7 @@
       }
     });
 
-    let allData = [];
-    let minuteBuffer = [];
-
+    // 🟢 Utility functions
     function getAirQualityStatus(dust) {
       if (dust <= 35) return { text: "Clean", color: "#28a745" };
       if (dust <= 75) return { text: "Moderate", color: "#ffc107" };
@@ -190,51 +140,57 @@
       return ((stdDev / mean) * 100).toFixed(2);
     }
 
-    function addData() {
-      // Simulated sensor reading
-      const dustValue = (Math.random() * 150 + 10).toFixed(1);
-      const timestamp = new Date().toLocaleTimeString();
+    // 🟢 Fetch real ThingSpeak data
+    async function fetchData() {
+      try {
+        const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readAPIKey}&results=${resultsCount}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-      allData.push(parseFloat(dustValue));
-      minuteBuffer.push(parseFloat(dustValue));
+        const dustData = data.feeds.map(f => parseFloat(f.field1));
+        const timestamps = data.feeds.map(f => f.created_at.substring(11,19));
 
-      if (minuteBuffer.length > 60) minuteBuffer.shift();
+        if (dustData.length === 0) return;
 
-      // Update summary cards
-      const rms = calculateRMS(minuteBuffer);
-      const cv = calculateCV(minuteBuffer);
-      const avg = (allData.slice(-10).reduce((a,b)=>a+b,0) / Math.min(10, allData.length)).toFixed(1);
+        // Update chart
+        dustChart.data.labels = timestamps;
+        dustChart.data.datasets[0].data = dustData;
+        dustChart.update();
 
-      document.getElementById('currentDust').textContent = dustValue;
-      document.getElementById('avgDust').textContent = avg;
-      document.getElementById('rmsNow').textContent = rms;
-      document.getElementById('cvNow').textContent = cv;
+        // Calculations
+        const current = dustData[dustData.length - 1];
+        const avg = (dustData.reduce((a,b) => a + b, 0) / dustData.length).toFixed(1);
+        const rms = calculateRMS(dustData);
+        const cv = calculateCV(dustData);
 
-      const aq = getAirQualityStatus(dustValue);
-      const aqElem = document.getElementById('aqStatus');
-      aqElem.textContent = aq.text;
-      aqElem.style.color = aq.color;
+        // Update summary cards
+        document.getElementById('currentDust').textContent = current.toFixed(1);
+        document.getElementById('avgDust').textContent = avg;
+        document.getElementById('rmsNow').textContent = rms;
+        document.getElementById('cvNow').textContent = cv;
 
-      // Update chart
-      dustChart.data.labels.push(timestamp);
-      dustChart.data.datasets[0].data.push(dustValue);
-      if (dustChart.data.labels.length > 50) {
-        dustChart.data.labels.shift();
-        dustChart.data.datasets[0].data.shift();
+        const aq = getAirQualityStatus(current);
+        const aqElem = document.getElementById('aqStatus');
+        aqElem.textContent = aq.text;
+        aqElem.style.color = aq.color;
+
+        // Update table
+        const tbody = document.querySelector("#dataTable tbody");
+        const row = tbody.insertRow(0);
+        row.insertCell(0).textContent = timestamps[timestamps.length - 1];
+        row.insertCell(1).textContent = current.toFixed(1);
+        row.insertCell(2).textContent = rms;
+        row.insertCell(3).textContent = cv;
+        if (tbody.rows.length > 100) tbody.deleteRow(100);
+
+      } catch (error) {
+        console.error("Error fetching ThingSpeak data:", error);
       }
-      dustChart.update();
-
-      // Update table
-      const tbody = document.querySelector("#dataTable tbody");
-      const row = tbody.insertRow(0);
-      row.insertCell(0).textContent = timestamp;
-      row.insertCell(1).textContent = dustValue;
-      row.insertCell(2).textContent = rms;
-      row.insertCell(3).textContent = cv;
-      if (tbody.rows.length > 100) tbody.deleteRow(100);
     }
 
-    setInterval(addData, 1000); // simulate every 1s
+    // Fetch every 20 seconds
+    fetchData();
+    setInterval(fetchData, 20000);
 
     // Export CSV
     document.getElementById("exportBtn").addEventListener("click", () => {
