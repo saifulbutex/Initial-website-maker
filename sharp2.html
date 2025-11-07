@@ -1,215 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PM10 Dust Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f8f9fa; text-align:center; }
-.tabs { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
-.tabs button { padding:10px 20px; border:none; border-radius:6px; background:#e9ecef; cursor:pointer; font-size:14px;}
-.tabs button.active { background:#007bff; color:white; }
-.tab-content { display:none; max-width:900px; margin:auto; text-align:left; }
-.tab-content.active { display:block; }
-.card { background:white; padding:20px 30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-#sensorStatus { width:18px; height:18px; border-radius:50%; display:inline-block; margin-left:10px; vertical-align:middle; }
-.refresh-btn { background:#007bff; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:12px; margin:10px 0; }
-.refresh-btn:hover { background:#0056b3; }
-table { width:100%; border-collapse:collapse; background:white; margin-top:10px; }
-table, th, td { border:1px solid #ddd; }
-th, td { padding:8px; text-align:center; }
-th { background:#e9ecef; }
-.chart-container { background:white; padding:10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dust Monitoring Dashboard - Tabs</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0; padding: 0;
+      background-color: #f8f9fa; color: #333;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    h2 { margin-top: 10px; text-align: center; }
+
+    .tabs {
+      display: flex; gap: 5px;
+      margin: 15px 0;
+    }
+
+    .tabs button {
+      padding: 10px 20px; cursor: pointer;
+      border: none; border-radius: 6px;
+      background: #e9ecef; font-size: 14px;
+    }
+
+    .tabs button.active { background: #007bff; color: white; }
+
+    .tab-content {
+      display: none; width: 95%; max-width: 900px;
+    }
+
+    .tab-content.active { display: block; }
+
+    .summary { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 20px; justify-content: center; }
+    .card { background: white; border-radius: 12px; padding: 15px 20px; min-width: 150px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    #aqStatus { font-weight: bold; padding: 4px 10px; border-radius: 6px; }
+
+    .chart-container { width: 100%; height: 400px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 20px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table, th, td { border: 1px solid #ddd; }
+    th, td { padding: 8px; text-align: center; }
+    th { background-color: #e9ecef; }
+
+    #exportBtn { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+    #exportBtn:hover { background: #0056b3; }
+
+    @media (max-width: 600px) {
+      .chart-container { height: 250px; }
+      .summary .card { font-size: 13px; min-width: 130px; }
+    }
+  </style>
 </head>
 <body>
 
-<h2>🌫️ PM10 Dust Monitoring Dashboard</h2>
+  <h2>🌫️ Dust Monitoring Dashboard</h2>
 
-<div class="tabs">
-  <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
-  <button class="tab-btn" onclick="showTab('table')">Table</button>
-  <button class="tab-btn" onclick="showTab('stats')">Statistics</button>
-</div>
-
-<!-- Dashboard Tab -->
-<div id="dashboard" class="tab-content active">
-  <div class="card">
-    <h3>
-      Current PM10: <span id="currentDust">--</span> µg/m³
-      <div id="sensorStatus" style="background:red;"></div>
-    </h3>
-    <div id="aqMeter" style="width:260px; height:160px; margin:auto;"></div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
+    <button class="tab-btn" onclick="showTab('table')">Table</button>
+    <button class="tab-btn" onclick="showTab('statistics')">Statistics</button>
   </div>
 
-  <div class="card">
-    Avg (10 samples): <span id="avgDust">--</span> µg/m³
+  <!-- Tab Contents -->
+  <div id="dashboard" class="tab-content active">
+    <div class="summary">
+      <div class="card">Current Dust<br><span id="currentDust">--</span> µg/m³</div>
+      <div class="card">Avg (10 samples)<br><span id="avgDust">--</span> µg/m³</div>
+      <div class="card">RMS (1 min)<br><span id="rmsNow">--</span></div>
+      <div class="card">CV% (1 min)<br><span id="cvNow">--</span></div>
+      <div class="card">Air Quality<br><span id="aqStatus">--</span></div>
+    </div>
+    <div class="chart-container">
+      <canvas id="dustChart"></canvas>
+    </div>
   </div>
 
-  <div class="card">
-    RMS (2 min): <span id="rmsValue">--</span><br>
-    CV% (2 min): <span id="cvValue">--</span>
+  <div id="table" class="tab-content">
+    <h3>Recorded Data</h3>
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Dust (µg/m³)</th>
+          <th>RMS (1 min)</th>
+          <th>CV% (1 min)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="exportBtn">Download CSV</button>
   </div>
 
-  <div class="chart-container">
-    <canvas id="dustChart"></canvas>
+  <div id="statistics" class="tab-content">
+    <div class="chart-container">
+      <canvas id="rmsChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="cvChart"></canvas>
+    </div>
   </div>
-</div>
 
-<!-- Table Tab -->
-<div id="table" class="tab-content">
-  <h3>Recorded PM10 Data</h3>
-  <button class="refresh-btn" id="clearTable">Clear Table</button>
-  <table id="dataTable">
-    <thead><tr><th>Timestamp</th><th>PM10 (µg/m³)</th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <button class="refresh-btn" id="downloadCSV">Download CSV</button>
-</div>
-
-<!-- Statistics Tab -->
-<div id="stats" class="tab-content">
-  <div class="chart-container">
-    <canvas id="rmsChart"></canvas>
-  </div>
-  <div class="chart-container">
-    <canvas id="cvChart"></canvas>
-  </div>
-</div>
-
-<script>
-  // Tabs
-  function showTab(id) {
-    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.tab-btn[onclick*="'+id+'"]').classList.add('active');
-  }
-
-  // AQI Gauge
-  var aqiGauge = new JustGage({
-    id: "aqMeter",
-    value: 0,
-    min: 0,
-    max: 300,
-    title: "AQI (PM10)",
-    label: "µg/m³",
-    gaugeWidthScale:0.6,
-    donut:true,
-    pointer:true,
-    hideMinMax:true,
-    customSectors: [
-      { color: "green",  lo:0,   hi:40 },
-      { color: "yellow", lo:41,  hi:65 },
-      { color: "orange", lo:66,  hi:150 },
-      { color: "red",    lo:151, hi:300 }
-    ]
-  });
-
-  // Charts
-  const dustChart = new Chart(document.getElementById('dustChart').getContext('2d'), {
-    type:'line',
-    data:{ labels:[], datasets:[{ label:'PM10 (µg/m³)', data:[], borderColor:'blue', fill:false, tension:0.3 }]},
-    options:{ responsive:true }
-  });
-  const rmsChart = new Chart(document.getElementById('rmsChart').getContext('2d'), {
-    type:'line',
-    data:{ labels:[], datasets:[{ label:'RMS', data:[], borderColor:'orange', fill:false }]},
-    options:{ responsive:true }
-  });
-  const cvChart = new Chart(document.getElementById('cvChart').getContext('2d'), {
-    type:'line',
-    data:{ labels:[], datasets:[{ label:'CV%', data:[], borderColor:'green', fill:false }]},
-    options:{ responsive:true }
-  });
-
-  // Utils
-  function calculateRMS(vals){ if(vals.length===0)return 0; const sqSum=vals.reduce((a,b)=>a+b*b,0); return Math.sqrt(sqSum/vals.length).toFixed(2); }
-  function calculateCV(vals){ if(vals.length===0)return 0; const mean=vals.reduce((a,b)=>a+b,0)/vals.length; const std=Math.sqrt(vals.map(v=>(v-mean)*(v-mean)).reduce((a,b)=>a+b,0)/vals.length); return ((std/mean)*100).toFixed(2); }
-
-  // Data storage
-  let dustValues=[], ts=[];
-
-  // ThingSpeak config
-  const channelID = "3148948";   // replace with your channel ID
-  const readAPIKey = "41YJ4QCD1RAGKEJ4"; // replace with your read API key
-  const fieldNumber = 1;                 // PM10 in field1
-  const resultsCount = 1;                // latest value
-
-  // Fetch PM10
-  async function fetchDustValue(){
-    const url = `https://api.thingspeak.com/channels/${channelID}/fields/${fieldNumber}.json?api_key=${readAPIKey}&results=${resultsCount}`;
-    try{
-      const response = await fetch(url);
-      const data = await response.json();
-      if(!data.feeds || data.feeds.length===0) return;
-
-      const dust = parseFloat(data.feeds[0][`field${fieldNumber}`]);
-      const now = new Date(data.feeds[0].created_at).toLocaleTimeString();
-
-      dustValues.push(dust); ts.push(now);
-
-      document.getElementById('currentDust').textContent=dust;
-      document.getElementById('sensorStatus').style.background='green';
-      aqiGauge.refresh(dust);
-
-      dustChart.data.labels=ts;
-      dustChart.data.datasets[0].data=dustValues;
-      dustChart.update();
-
-      const tbody = document.querySelector("#dataTable tbody");
-      const row = tbody.insertRow(0);
-      row.insertCell(0).textContent=now;
-      row.insertCell(1).textContent=dust.toFixed(1);
-
-      updateAvg();
-      updateRmsCvTrend();
-
-    } catch(err){
-      console.error("ThingSpeak fetch error:", err);
-      document.getElementById('sensorStatus').style.background='red';
+  <script>
+    // ------------------ Tabs logic ------------------
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.tab-btn[onclick*="'+tabId+'"]').classList.add('active');
     }
-  }
 
-  function updateAvg(){
-    const last10=dustValues.slice(-10);
-    if(last10.length===0) return;
-    document.getElementById('avgDust').textContent=(last10.reduce((a,b)=>a+b,0)/last10.length).toFixed(1);
-  }
+    // ------------------ ThingSpeak config ------------------
+    const channelID = "3148948";
+    const readAPIKey = "41YJ4QCD1RAGKEJ4";
+    const resultsCount = 20;
 
-  function updateRmsCvTrend(){
-    const windowSize=6; // ~2 min
-    if(dustValues.length<windowSize) return;
-    const windowData=dustValues.slice(-windowSize);
-    const label=ts[ts.length-1];
-    const rms=calculateRMS(windowData);
-    const cv=calculateCV(windowData);
+    // ------------------ Charts ------------------
+    const dustCtx = document.getElementById('dustChart').getContext('2d');
+    const dustChart = new Chart(dustCtx, { type:'line', data:{ labels:[], datasets:[{ label:'Dust (µg/m³)', data:[], borderColor:'rgba(0,123,255,0.9)', backgroundColor:'rgba(0,123,255,0.1)', fill:true, tension:0.3 }]}, options:{ responsive:true, scales:{ x:{title:{display:true,text:'Time'}}, y:{title:{display:true,text:'Dust (µg/m³)'}} } } });
 
-    document.getElementById('rmsValue').textContent=rms;
-    document.getElementById('cvValue').textContent=cv;
+    const rmsCtx = document.getElementById('rmsChart').getContext('2d');
+    const rmsChart = new Chart(rmsCtx, { type:'line', data:{ labels:[], datasets:[{ label:'RMS', data:[], borderColor:'orange', fill:false }] }, options:{ responsive:true, scales:{ x:{title:{display:true,text:'Time'}}, y:{title:{display:true,text:'RMS'}} } } });
 
-    rmsChart.data.labels.push(label); rmsChart.data.datasets[0].data.push(rms); rmsChart.update();
-    cvChart.data.labels.push(label); cvChart.data.datasets[0].data.push(cv); cvChart.update();
-  }
+    const cvCtx = document.getElementById('cvChart').getContext('2d');
+    const cvChart = new Chart(cvCtx, { type:'line', data:{ labels:[], datasets:[{ label:'CV%', data:[], borderColor:'green', fill:false }] }, options:{ responsive:true, scales:{ x:{title:{display:true,text:'Time'}}, y:{title:{display:true,text:'CV%'}} } } });
 
-  // CSV Download
-  document.getElementById('downloadCSV').addEventListener('click',()=>{
-    let csv="Timestamp,PM10(µg/m³)\n";
-    document.querySelectorAll("#dataTable tbody tr").forEach(r=>{ csv+=Array.from(r.cells).map(c=>c.textContent).join(",")+"\n"; });
-    const blob=new Blob([csv],{type:"text/csv"});
-    const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download="pm10_data.csv"; link.click();
-  });
+    // ------------------ Utils ------------------
+    function getAirQualityStatus(dust) {
+      if(dust<=35) return {text:"Clean", color:"#28a745"};
+      if(dust<=75) return {text:"Moderate", color:"#ffc107"};
+      if(dust<=150) return {text:"Unhealthy", color:"#fd7e14"};
+      return {text:"Hazardous", color:"#dc3545"};
+    }
 
-  // Clear table
-  document.getElementById('clearTable').addEventListener('click',()=>{ document.querySelector("#dataTable tbody").innerHTML=""; });
+    function calculateRMS(values){ if(values.length===0) return 0; const sqSum=values.reduce((a,b)=>a+b**2,0); return Math.sqrt(sqSum/values.length).toFixed(2); }
+    function calculateCV(values){ if(values.length===0) return 0; const mean=values.reduce((a,b)=>a+b,0)/values.length; const stdDev=Math.sqrt(values.map(v=>(v-mean)**2).reduce((a,b)=>a+b)/values.length); return ((stdDev/mean)*100).toFixed(2); }
 
-  // Initial fetch + every 20s
-  fetchDustValue();
-  setInterval(fetchDustValue, 20000);
-</script>
+    // ------------------ Data Fetch ------------------
+    let allDust = []; let allRMS=[]; let allCV=[];
+    async function fetchData() {
+      try {
+        const url=`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readAPIKey}&results=${resultsCount}`;
+        const response=await fetch(url);
+        const data=await response.json();
+        const dustData=data.feeds.map(f=>parseFloat(f.field1)).filter(v=>!isNaN(v));
+        const timestamps=data.feeds.map(f=>f.created_at.substring(11,19));
+        if(dustData.length===0) return;
+
+        // ------------------ Summary Cards ------------------
+        const current=dustData[dustData.length-1];
+        const avg=(dustData.reduce((a,b)=>a+b,0)/dustData.length).toFixed(1);
+        const rms=calculateRMS(dustData);
+        const cv=calculateCV(dustData);
+
+        document.getElementById('currentDust').textContent=current.toFixed(1);
+        document.getElementById('avgDust').textContent=avg;
+        document.getElementById('rmsNow').textContent=rms;
+        document.getElementById('cvNow').textContent=cv;
+
+        const aq=getAirQualityStatus(current);
+        const aqElem=document.getElementById('aqStatus');
+        aqElem.textContent=aq.text; aqElem.style.color=aq.color;
+
+        // ------------------ Chart Update ------------------
+        dustChart.data.labels = timestamps;
+        dustChart.data.datasets[0].data = dustData;
+        dustChart.update();
+
+        // ------------------ Table Update ------------------
+        const tbody=document.querySelector("#dataTable tbody");
+        const row=tbody.insertRow(0);
+        row.insertCell(0).textContent = timestamps[timestamps.length-1];
+        row.insertCell(1).textContent = current.toFixed(1);
+        row.insertCell(2).textContent = rms;
+        row.insertCell(3).textContent = cv;
+        if(tbody.rows.length>100) tbody.deleteRow(100);
+
+        // ------------------ Stats Tab Charts ------------------
+        allDust.push(current); allRMS.push(rms); allCV.push(cv);
+        rmsChart.data.labels=timestamps; rmsChart.data.datasets[0].data=allRMS; rmsChart.update();
+        cvChart.data.labels=timestamps; cvChart.data.datasets[0].data=allCV; cvChart.update();
+
+      } catch(err){ console.error("Error fetching data:", err); }
+    }
+
+    fetchData(); setInterval(fetchData, 20000);
+
+    // ------------------ CSV Export ------------------
+    document.getElementById("exportBtn").addEventListener("click",()=>{
+      let csv="Timestamp,Dust,RMS,CV%\n";
+      document.querySelectorAll("#dataTable tbody tr").forEach(r=>{
+        csv+=Array.from(r.children).map(td=>td.innerText).join(",")+"\n";
+      });
+      const blob=new Blob([csv],{type:"text/csv"});
+      const link=document.createElement("a");
+      link.href=URL.createObjectURL(blob);
+      link.download="dust_data.csv"; link.click();
+    });
+  </script>
 
 </body>
 </html>
