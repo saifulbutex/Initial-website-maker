@@ -25,7 +25,7 @@
       padding: 15px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       min-width: 160px; text-align: center; font-size: 15px;
     }
-    #aqStatus, #pm10AQI { font-weight: bold; padding: 4px 10px; border-radius: 6px; }
+    #aqStatus { font-weight: bold; padding: 4px 10px; border-radius: 6px; }
     .chart-container {
       width: 90%; max-width: 900px; height: 400px;
       background: white; border-radius: 12px;
@@ -63,10 +63,9 @@
 <div class="summary">
   <div class="card">Current Dust<br><span id="currentDust">--</span> µg/m³</div>
   <div class="card">Avg (10 samples)<br><span id="avgDust">--</span> µg/m³</div>
-  <div class="card">CV% (1 min)<br><span id="cvNow">--</span></div>
+  <div class="card">CV% (last 20)<br><span id="cvTop">--</span></div>
   <div class="card">Air Quality<br><span id="aqStatus">--</span></div>
-  <div class="card">Today’s PM10<br><span id="todayPM10">--</span> µg/m³</div>
-  <div class="card">PM10 AQI<br><span id="pm10AQI">--</span></div>
+  <div class="card">Today’s PM10<br><span id="todayPM10">--</span></div>
 </div>
 
 <div class="chart-container">
@@ -145,11 +144,11 @@
 
       const current = dustData[dustData.length-1];
       const avg = (dustData.reduce((a,b)=>a+b,0)/dustData.length).toFixed(1);
-      const cv = calculateCV(dustData);
+      const cvTop = calculateCV(dustData);
 
       document.getElementById('currentDust').textContent = current.toFixed(1);
       document.getElementById('avgDust').textContent = avg;
-      document.getElementById('cvNow').textContent = cv;
+      document.getElementById('cvTop').textContent = cvTop;
 
       const aq = getAirQualityStatus(current);
       const aqElem = document.getElementById('aqStatus');
@@ -157,11 +156,12 @@
       aqElem.style.color = aq.color;
 
       const tbody = document.querySelector("#dataTable tbody");
+      const cvRow = calculateCV(dustData.slice(-1)); // CV% per last sample (1 min)
       const row = tbody.insertRow(0);
       row.insertCell(0).textContent = timestamps[timestamps.length-1];
       row.insertCell(1).textContent = current.toFixed(1);
       row.insertCell(2).textContent = getAQI_PM10(current);
-      row.insertCell(3).textContent = cv;
+      row.insertCell(3).textContent = cvRow;
       if(tbody.rows.length>100) tbody.deleteRow(100);
 
     } catch (error) { console.error("Error fetching ThingSpeak data:", error); }
@@ -178,7 +178,6 @@
           const data = await res.json();
           const pm10 = data.list[0].components.pm10;
           document.getElementById('todayPM10').textContent = pm10.toFixed(1) + " (OpenWeatherMap)";
-          document.getElementById('pm10AQI').textContent = getAQI_PM10(pm10);
         } catch(e){ console.error("Weather fetch error:", e); }
       }, err => { console.error("Geolocation denied or failed", err); });
     } else console.warn("Geolocation not supported");
