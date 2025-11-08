@@ -28,9 +28,9 @@ th { background-color:#e9ecef; }
 
 <div class="summary">
   <div class="card">Current Dust<br><span id="currentDust">--</span> µg/m³</div>
-  <div class="card">Avg (10 samples)<br><span id="avgDust">--</span> µg/m³</div>
-  <div class="card">CV% (last 20)<br><span id="cvTop">--</span></div>
   <div class="card">Air Quality<br><span id="aqStatus">--</span></div>
+  <div class="card">Avg (10 samples)<br><span id="avgDust">--</span> µg/m³</div>
+  <div class="card">SD% (10 samples)<br><span id="cvTop">--</span></div>
   <div class="card">Today’s PM10<br><span id="todayPM10">--</span></div>
   <div class="card">Source<br><span id="pmSource">--</span></div>
 </div>
@@ -115,7 +115,7 @@ async function fetchDustData(){
 
     const current = dustData[dustData.length-1];
     const avg = (dustData.reduce((a,b)=>a+b,0)/dustData.length).toFixed(1);
-    const cvTop = calculateCV(dustData.slice(-20));
+    const cvTop = calculateSD(dustData.slice(-10));
 
     document.getElementById('currentDust').textContent = current.toFixed(1);
     document.getElementById('avgDust').textContent = avg;
