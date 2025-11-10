@@ -130,10 +130,10 @@ async function fetchThingSpeak(){
 
     const timestamps = data.feeds.map(f=>new Date(f.created_at).toLocaleTimeString('en-US',{hour12:false, timeZone:'Asia/Dhaka'}));
     const pm10Arr = data.feeds.map(f=>parseFloat(f.field1));
-    const tempArr = data.feeds.map(f=>parseFloat(f.field2));
-    const humArr = data.feeds.map(f=>parseFloat(f.field3));
-    const coArr = data.feeds.map(f=>parseFloat(f.field4));
-    const aqiArr = data.feeds.map(f=>parseFloat(f.field5));
+    const aqiArr  = data.feeds.map(f=>parseFloat(f.field2));
+    const tempArr = data.feeds.map(f=>parseFloat(f.field3));
+    const humArr  = data.feeds.map(f=>parseFloat(f.field4));
+    const coArr   = data.feeds.map(f=>parseFloat(f.field5));
 
     if(pm10Arr.length===0) return;
 
@@ -210,3 +210,4 @@ setInterval(fetchWeatherPM10, 1800000);
 </script>
 </body>
 </html>
+
