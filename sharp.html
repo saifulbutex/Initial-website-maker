@@ -89,37 +89,20 @@ document.querySelectorAll(".tabBtn").forEach(btn=>{
   });
 });
 
-// ========== ThingSpeak Config ==========
-const dustChannelID = "3148948";
-const dhtChannelID = "3138187";
-const dustReadKey = "41YJ4QCD1RAGKEJ4";
-const dhtReadKey = "B8F8Z7FLTY8KX4M4";
+// ========== Config ==========
+const tsChannelID = "3156704";
+const tsReadKey = "FMLEKZG44JP98RD9";
 const resultsCount = 20;
+const weatherAPIKey = "b3bfbea577fbd677b558cb26bb442204";
 
 // ========== Charts ==========
-const dustCtx = document.getElementById('dustChart').getContext('2d');
-const aqiCtx = document.getElementById('aqiChart').getContext('2d');
-const tempArr = dhtData.feeds.map(f => {
-  const v = parseFloat(f.field1);
-  return isNaN(v) ? null : v;
-});
-const humArr = dhtData.feeds.map(f => {
-  const v = parseFloat(f.field2);
-  return isNaN(v) ? null : v;
-});
-const coArr = dhtData.feeds.map(f => {
-  const v = parseFloat(f.field3);
-  return isNaN(v) ? null : v;
-});
+const dustChart = new Chart(document.getElementById('dustChart').getContext('2d'), {type:'line', data:{labels:[], datasets:[{label:'PM10 µg/m³', data:[], borderColor:'rgba(0,123,255,0.9)', backgroundColor:'rgba(0,123,255,0.1)', fill:true, tension:0.3}]}});
+const aqiChart = new Chart(document.getElementById('aqiChart').getContext('2d'), {type:'line', data:{labels:[], datasets:[{label:'AQI', data:[], borderColor:'rgba(255,99,132,0.9)', backgroundColor:'rgba(255,99,132,0.1)', fill:true, tension:0.3}]}});
+const tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), {type:'line', data:{labels:[], datasets:[{label:'Temperature °C', data:[], borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.1)', fill:true, tension:0.3}]}});
+const humChart = new Chart(document.getElementById('humChart').getContext('2d'), {type:'line', data:{labels:[], datasets:[{label:'Humidity %', data:[], borderColor:'rgba(75,192,192,0.9)', backgroundColor:'rgba(75,192,192,0.1)', fill:true, tension:0.3}]}});
+const coChart = new Chart(document.getElementById('coChart').getContext('2d'), {type:'line', data:{labels:[], datasets:[{label:'CO PPM', data:[], borderColor:'rgba(153,102,255,0.9)', backgroundColor:'rgba(153,102,255,0.1)', fill:true, tension:0.3}]}});
 
-
-const dustChart = new Chart(dustCtx,{type:'line',data:{labels:[],datasets:[{label:'PM10 µg/m³',data:[],borderColor:'rgba(0,123,255,0.9)',backgroundColor:'rgba(0,123,255,0.1)',fill:true,tension:0.3}]}});
-const aqiChart = new Chart(aqiCtx,{type:'line',data:{labels:[],datasets:[{label:'AQI',data:[],borderColor:'rgba(255,99,132,0.9)',backgroundColor:'rgba(255,99,132,0.1)',fill:true,tension:0.3}]}});
-const tempChart = new Chart(tempCtx,{type:'line',data:{labels:[],datasets:[{label:'Temperature °C',data:[],borderColor:'rgba(255,159,64,0.9)',backgroundColor:'rgba(255,159,64,0.1)',fill:true,tension:0.3}]}});
-const humChart = new Chart(humCtx,{type:'line',data:{labels:[],datasets:[{label:'Humidity %',data:[],borderColor:'rgba(75,192,192,0.9)',backgroundColor:'rgba(75,192,192,0.1)',fill:true,tension:0.3}]}});
-const coChart = new Chart(coCtx,{type:'line',data:{labels:[],datasets:[{label:'CO PPM',data:[],borderColor:'rgba(153,102,255,0.9)',backgroundColor:'rgba(153,102,255,0.1)',fill:true,tension:0.3}]}});
-
-// ========== Air Quality Status ==========
+// ========== Air Quality ==========
 function getAirQualityStatus(dust){
   if(dust<=50) return {text:"Good", color:"#28a745"};
   if(dust<=100) return {text:"Moderate", color:"#ffc107"};
@@ -128,7 +111,6 @@ function getAirQualityStatus(dust){
   if(dust<=300) return {text:"Very Unhealthy", color:"#800080"};
   return {text:"Hazardous", color:"#4B0082"};
 }
-
 function getAQI_PM10(pm10){
   if(pm10<=54) return Math.round((pm10/54)*50);
   if(pm10<=154) return Math.round(51 + (pm10-55)*(100-51)/(154-55));
@@ -139,64 +121,57 @@ function getAQI_PM10(pm10){
   return Math.round(401 + (pm10-505)*(500-401)/(604-505));
 }
 
-// ========== Fetch ThingSpeak Data ==========
-async function fetchData(){
+// ========== ThingSpeak Fetch ==========
+async function fetchThingSpeak(){
   try{
-    const dustUrl = `https://api.thingspeak.com/channels/${dustChannelID}/feeds.json?api_key=${dustReadKey}&results=${resultsCount}`;
-    const dustResp = await fetch(dustUrl);
-    const dustData = await dustResp.json();
-    const pm10Arr = dustData.feeds.map(f => parseFloat(f.field1));
-    const timestamps = dustData.feeds.map(f => new Date(f.created_at).toLocaleTimeString('en-US',{hour12:false, timeZone:'Asia/Dhaka'}));
+    const url = `https://api.thingspeak.com/channels/${tsChannelID}/feeds.json?api_key=${tsReadKey}&results=${resultsCount}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
 
-    const dhtUrl = `https://api.thingspeak.com/channels/${dhtChannelID}/feeds.json?api_key=${dhtReadKey}&results=${resultsCount}`;
-    const dhtResp = await fetch(dhtUrl);
-    const dhtData = await dhtResp.json();
-    const tempArr = dhtData.feeds.map(f => parseFloat(f.field1));
-    const humArr = dhtData.feeds.map(f => parseFloat(f.field2));
-    const coArr = dhtData.feeds.map(f => parseFloat(f.field3));
+    const timestamps = data.feeds.map(f=>new Date(f.created_at).toLocaleTimeString('en-US',{hour12:false, timeZone:'Asia/Dhaka'}));
+    const pm10Arr = data.feeds.map(f=>parseFloat(f.field1));
+    const tempArr = data.feeds.map(f=>parseFloat(f.field2));
+    const humArr = data.feeds.map(f=>parseFloat(f.field3));
+    const coArr = data.feeds.map(f=>parseFloat(f.field4));
+    const aqiArr = data.feeds.map(f=>parseFloat(f.field5));
 
     if(pm10Arr.length===0) return;
 
     const currentPM10 = pm10Arr[pm10Arr.length-1];
-    const currentTemp = tempArr[tempArr.length-1];
-    const currentHum = humArr[humArr.length-1];
-    const currentCO = coArr[coArr.length-1];
-
     document.getElementById('currentDust').textContent = currentPM10.toFixed(1);
-    document.getElementById('temp').textContent = currentTemp.toFixed(1);
-    document.getElementById('hum').textContent = currentHum.toFixed(1);
-    document.getElementById('co').textContent = currentCO.toFixed(2);
+    document.getElementById('temp').textContent = tempArr[tempArr.length-1].toFixed(1);
+    document.getElementById('hum').textContent = humArr[humArr.length-1].toFixed(1);
+    document.getElementById('co').textContent = coArr[coArr.length-1].toFixed(2);
 
     const aq = getAirQualityStatus(currentPM10);
     const aqElem = document.getElementById('aqStatus');
     aqElem.textContent = aq.text;
     aqElem.style.color = aq.color;
 
-    function updateChart(chart, dataArr){ chart.data.labels = timestamps; chart.data.datasets[0].data = dataArr; chart.update(); }
+    function updateChart(chart, arr){ chart.data.labels = timestamps; chart.data.datasets[0].data = arr; chart.update(); }
     updateChart(dustChart, pm10Arr);
-    updateChart(aqiChart, pm10Arr.map(v=>getAQI_PM10(v)));
+    updateChart(aqiChart, aqiArr);
     updateChart(tempChart, tempArr);
     updateChart(humChart, humArr);
     updateChart(coChart, coArr);
 
-    // Update Table
+    // Table
     const tbody = document.querySelector("#dataTable tbody");
     tbody.innerHTML = "";
     for(let i=pm10Arr.length-1;i>=0;i--){
       const row = tbody.insertRow();
       row.insertCell(0).textContent = timestamps[i];
       row.insertCell(1).textContent = pm10Arr[i].toFixed(1);
-      row.insertCell(2).textContent = getAQI_PM10(pm10Arr[i]);
+      row.insertCell(2).textContent = aqiArr[i];
       row.insertCell(3).textContent = tempArr[i].toFixed(1);
       row.insertCell(4).textContent = humArr[i].toFixed(1);
       row.insertCell(5).textContent = coArr[i].toFixed(2);
     }
 
-  } catch(e){ console.error("Error fetching data:", e); }
+  } catch(e){ console.error("ThingSpeak error:", e); }
 }
 
-// ========== Fetch OpenWeatherMap PM10 ==========
-const weatherAPIKey = "b3bfbea577fbd677b558cb26bb442204";
+// ========== Weather PM10 ==========
 function fetchWeatherPM10(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(async pos=>{
@@ -214,11 +189,6 @@ function fetchWeatherPM10(){
   }
 }
 
-fetchData();
-fetchWeatherPM10();
-setInterval(fetchData, 20000);
-setInterval(fetchWeatherPM10, 1800000);
-
 // ========== CSV Download ==========
 document.getElementById("exportBtn").addEventListener("click", ()=>{
   let csv = "Timestamp,PM10,AQI,Temperature,Humidity,CO PPM\n";
@@ -231,7 +201,12 @@ document.getElementById("exportBtn").addEventListener("click", ()=>{
   link.download = "dust_data.csv";
   link.click();
 });
+
+// ========== Auto Refresh ==========
+fetchThingSpeak();
+fetchWeatherPM10();
+setInterval(fetchThingSpeak, 20000);
+setInterval(fetchWeatherPM10, 1800000);
 </script>
 </body>
 </html>
-
